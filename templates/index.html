@@ -4,10 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teplota a Vlhkosť</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
 </head>
 <body>
     <h1>Údaje z NodeMCU</h1>
-    <p>Teplota: {{ temperature }}</p>
-    <p>Vlhkosť: {{ humidity }}</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Teplota</th>
+                <th>Vlhkosť</th>
+            </tr>
+        </thead>
+        <tbody id="data">
+        </tbody>
+    </table>
+    <script>
+        setInterval(function() {
+            fetch('/data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.temperature !== "No data" && data.humidity !== "No data") {
+                        let row = `<tr><td>${data.temperature}</td><td>${data.humidity}</td></tr>`;
+                        document.getElementById('data').innerHTML += row;
+                    }
+                });
+        }, 2000); // Interval nastavený na 2 sekundy
+    </script>
 </body>
 </html>

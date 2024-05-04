@@ -1,34 +1,34 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 import serial
 import time
 
 app = Flask(__name__)
 
-# Nastavenie sériovej komunikácie
-ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=10)
 
-def read_serial_data():
-    # Čítanie údajov zo sériovej komunikácie
-    buffer = ser.read(ser.inWaiting())  # Prečíta všetky dostupné dáta
+@app.route("/")
+def index():
+    return render_template('index.html')
+
+@app.route("/data")
+def data():
+    time.sleep(2)  # Pridanie oneskorenia pred každým čítaním
+    buffer = ser.read(ser.inWaiting())
     if not buffer:
-        return None, None  # Ak nie sú dostupné žiadne údaje, vráti None
+        return jsonify(temperature="No data", humidity="No data")
     lines = buffer.decode('utf-8').strip().split('\n')
     temp = None
     hum = None
     for line in lines:
         if 'Temperature' in line:
-            temp = line.split(': ')[1].strip()  # Zabezpečí odstránenie medzier
+            temp = line.split(': ')[1].strip()
         elif 'Humidity' in line:
             hum = line.split(': ')[1].strip()
-    return temp, hum
-
-@app.route("/")
-def index():
-    temp, hum = read_serial_data()
+    
+    # Kontrola, či sú hodnoty None a nevrátiť ich
     if temp is None or hum is None:
-        temp = "Čakanie na údaje..."
-        hum = "Čakanie na údaje..."
-    return render_template('index.html', temperature=temp, humidity=hum)
+        return jsonify(temperature="No data", humidity="No data")
+    return jsonify(temperature=temp, humidity=hum)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80)
