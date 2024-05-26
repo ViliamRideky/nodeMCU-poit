@@ -1,5 +1,6 @@
 import serial
 import time
+import json  
 
 # Nastavenie sériovej komunikácie
 ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
@@ -9,12 +10,15 @@ try:
         # Čítanie údajov zo sériovej komunikácie
         line = ser.readline().decode('utf-8').strip()
         
-        # Zobrazenie údajov v termináli
-        print(line)
+        if line:  
+            try:
+                data = json.loads(line)  
+                print("Teplota:", data.get('temperature', 'N/A'), "°C")
+                print("Vlhkosť:", data.get('humidity', 'N/A'), "%")
+            except json.JSONDecodeError:
+                print("Chyba pri dekódovaní JSON: ", line)
         
-        # Čakanie 1 sekundu pred ďalším čítaním
         time.sleep(1)
 
 except KeyboardInterrupt:
-    # Pri stlačení Ctrl+C zastavíme program a zatvoríme sériovú komunikáciu
     ser.close()

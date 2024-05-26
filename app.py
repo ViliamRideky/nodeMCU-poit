@@ -1,34 +1,40 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template
+from flask_socketio import SocketIO
 import serial
 import time
+import threading
+import json
 
 app = Flask(__name__)
+socketio = SocketIO(app)
+ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+system_active = False 
 
-ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=10)
+def read_from_port():
+    global system_active
+    while True:
+        if system_active:  # Čítanie a odosielanie údajov len ak je systém aktívny
+            try:
+                line = ser.readline().decode('utf-8').strip()
+                if line:
+                    data = json.loads(line)
+                    socketio.emit('newdata', data)
+            except json.JSONDecodeError:
+                print("Chyba pri dekódovaní JSON.")
+            except UnicodeDecodeError:
+                print("Dekódovanie zlyhalo.")
+        time.sleep(1)
 
-@app.route("/")
+@socketio.on('initialize_system')
+def initialize_system():
+    global system_active
+    print("Initializing system...")
+    system_active = True  
+
+@app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route("/data")
-def data():
-    time.sleep(2)  # Pridanie oneskorenia pred každým čítaním
-    buffer = ser.read(ser.inWaiting())
-    if not buffer:
-        return jsonify(temperature="No data", humidity="No data")
-    lines = buffer.decode('utf-8').strip().split('\n')
-    temp = None
-    hum = None
-    for line in lines:
-        if 'Temperature' in line:
-            temp = line.split(': ')[1].strip()
-        elif 'Humidity' in line:
-            hum = line.split(': ')[1].strip()
-    
-    # Kontrola, či sú hodnoty None a nevrátiť ich
-    if temp is None or hum is None:
-        return jsonify(temperature="No data", humidity="No data")
-    return jsonify(temperature=temp, humidity=hum)
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80)
+if __name__ == '__main__':
+    threading.Thread(target=read_from_port).start()
+    socketio.run(app, debug=True, host='0.0.0.0', port=80)

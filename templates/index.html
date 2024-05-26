@@ -3,32 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teplota a Vlhkosť</title>
+    <title>Sensor Data</title>
     <link rel="stylesheet" href="../static/style.css">
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <style>
+        #dataTable { display: none; }  
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
 </head>
 <body>
-    <h1>NodeMCU</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Teplota</th>
-                <th>Vlhkosť</th>
-            </tr>
-        </thead>
-        <tbody id="data">
-        </tbody>
-    </table>
+    <h1>Real-time Sensor Data</h1>
+    <button id="openButton">Open</button>
+    <div id="dataTable"> 
+        <table>
+            <thead>
+                <tr>
+                    <th>Temperature (°C)</th>
+                    <th>Humidity (%)</th>
+                </tr>
+            </thead>
+            <tbody id="dataBody"></tbody>
+        </table>
+    </div>
+
     <script>
-        setInterval(function() {
-            fetch('/data')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.temperature !== "No data" && data.humidity !== "No data") {
-                        let row = `<tr><td>${data.temperature}</td><td>${data.humidity}</td></tr>`;
-                        document.getElementById('data').innerHTML += row;
-                    }
-                });
-        }, 2000); // Interval nastavený na 2 sekundy
+        document.addEventListener('DOMContentLoaded', function () {
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+            document.getElementById('openButton').addEventListener('click', function() {
+                socket.emit('initialize_system'); 
+                document.getElementById('dataTable').style.display = 'block';  
+            });
+
+            socket.on('newdata', function (msg) {
+                var tbody = document.getElementById('dataBody');
+                
+                var newRow = document.createElement('tr');
+                var tempCell = document.createElement('td');
+                tempCell.textContent = msg.temperature ? msg.temperature + " °C" : "N/A";
+                newRow.appendChild(tempCell);
+                
+                var humCell = document.createElement('td');
+                humCell.textContent = msg.humidity ? msg.humidity + " %" : "N/A";
+                newRow.appendChild(humCell);
+                
+                tbody.appendChild(newRow);
+            });
+        });
     </script>
 </body>
 </html>
