@@ -1,64 +1,202 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sensor Data</title>
-    <link rel="stylesheet" href="../static/style.css">
-    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
-    <style>
-        #dataTable { display: none; }  
-        table {
-            width: 80%;
-            margin: 20px auto;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid black;
-            padding: 8px;
-            text-align: left;
-        }
-    </style>
-</head>
-<body>
-    <h1>Real-time Sensor Data</h1>
-    <button id="openButton">Open</button>
-    <div id="dataTable"> 
-        <table>
-            <thead>
-                <tr>
-                    <th>Temperature (°C)</th>
-                    <th>Humidity (%)</th>
-                </tr>
-            </thead>
-            <tbody id="dataBody"></tbody>
-        </table>
-    </div>
+<!DOCTYPE HTML>
+<html>
+ <head>
+  <title>NodeMCU-IoT</title>
+   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+   <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js"></script>
+   <script src="static/libs/plotly-latest.min.js"></script>
+   <script src="static/libs/gauge.min.js"></script>
+   <link rel="stylesheet" href="../static/style.css">
+   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+   <script type="text/javascript" charset="utf-8">
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+     $(document).ready(function() {
+       
+       var temperatureGaugeConfig = {
+        units: "°C",
+        minValue: -20,
+        maxValue: 40,
+        majorTicks: ['-20', '0', '10', '20', '30', '40'],
+        };
 
-            document.getElementById('openButton').addEventListener('click', function() {
-                socket.emit('initialize_system'); 
-                document.getElementById('dataTable').style.display = 'block';  
-            });
+        var humidityGaugeConfig = {
+          units: "%",
+          minValue: 0,
+          maxValue: 100,
+          majorTicks: ['0', '20', '40', '60', '80', '100'],
+        };
+        var gaugeConfig = temperatureGaugeConfig;
 
-            socket.on('newdata', function (msg) {
-                var tbody = document.getElementById('dataBody');
-                
-                var newRow = document.createElement('tr');
-                var tempCell = document.createElement('td');
-                tempCell.textContent = msg.temperature ? msg.temperature + " °C" : "N/A";
-                newRow.appendChild(tempCell);
-                
-                var humCell = document.createElement('td');
-                humCell.textContent = msg.humidity ? msg.humidity + " %" : "N/A";
-                newRow.appendChild(humCell);
-                
-                tbody.appendChild(newRow);
-            });
+       var gauge = new RadialGauge({
+          renderTo: 'canvasID',
+          width: 300,
+          height: 300,
+          ...gaugeConfig,         
+          minorTicks: 5,
+          strokeTicks: true,
+          colorPlate: "#fff",
+          borderShadowWidth: 0,
+          borders: false,
+          needleType: "arrow",
+          needleWidth: 2,
+          needleCircleSize: 7,
+          needleCircleOuter: true,
+          needleCircleInner: false,
+          animationDuration: 1500,
+          animationRule: "linear"
+      });
+      gauge.value = "0";
+       
+       function updateGaugeConfig(newConfig) {
+        gaugeConfig = newConfig;
+        gauge.update(gaugeConfig);
+      }
+
+      var x = new Array();
+      var y = new Array();
+      var trace;
+      var layout;
+      
+      var can_change_sensor = 1;
+      
+      namespace = '/test';
+      var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+
+      socket.on('connect', function() {
+        socket.emit('my_event', {data: 'I\'m connected!', value: 1}); });
+
+      socket.on('my_response', function(msg) {
+        console.log(msg);
+        $('#log').append('NodeMCU data #'+msg.count+': '+msg.sensor_data+'<br>').html(); 
+        
+        gauge.value = msg.sensor_data;  
+        
+        
+        x.push(parseFloat(msg.count));
+        y.push(parseFloat(msg.sensor_data));
+        trace = {
+            x: x,
+            y: y,
+        };       
+        layout = {
+          xaxis: {
+              title: 'x',
+          },
+          yaxis: {
+              title: 'y',
+          }
+        };
+        console.log(trace);
+        var traces = new Array();
+        traces.push(trace);
+        Plotly.newPlot($('#plotdiv')[0], traces, layout);   
         });
+
+      $('form#emit').submit(function(event) {
+          socket.emit('my_event', {value: $('#emit_value').val()});
+          return false; });
+      $('#buttonStart').click(function(event) {
+          console.log("db event")
+          console.log($('#buttonStart').val());
+          socket.emit('db_event', {value: $('#buttonStart').val()});
+          if ($(this).val() == "start") {
+            $(this).val("stop");
+            $(this).text("Stop");
+            
+            $('#canvasID').css('visibility', 'visible');
+            gauge.draw();
+            can_change_sensor = 0;
+            $('#log').empty();
+            Plotly.purge($('#plotdiv')[0]);
+            x.length = 0;
+            y.length = 0;
+          }
+          else {
+            $(this).val("start");
+            $(this).text("Start");
+            can_change_sensor = 1;
+          }
+          return false; }); 
+          
+        $('#temperatureBtn').click(function(event) {
+            if(can_change_sensor == 1){
+              socket.emit('switch_data', {value: "Temperature"});
+              $(this).addClass('active');
+              $('#humidityBtn').removeClass('active');
+              updateGaugeConfig(temperatureGaugeConfig);
+            }
+        });
+
+        $('#humidityBtn').click(function(event) {
+            if(can_change_sensor == 1){
+              socket.emit('switch_data', {value: "Humidity"});
+              $(this).addClass('active');
+              $('#temperatureBtn').removeClass('active');
+              updateGaugeConfig(humidityGaugeConfig);
+            }
+        });
+    
+    
+      $('form#disconnect').submit(function(event) {
+          socket.emit('disconnect_request');
+          localStorage.clear();
+          return false; });  
+          
+          
+      $('#initializeBtn').click(function(event) {
+        socket.emit('initialize');
+          
+        initialize();
+        
+        localStorage.setItem('initialized', 'true');
+        });
+        
+        function initialize() {
+          $('#initializeBtn').hide();
+          $('#temperatureBtn, #humidityBtn, #buttonStart').show(); 
+          $('#discBtn').css('visibility', 'visible');
+        }
+        
+        
+        var initialized = localStorage.getItem('initialized');
+        if (initialized === 'true') {
+            initialize();
+        }
+
+      });
     </script>
+</head>
+
+<body>
+    <div class="container">
+        <h2 class="text-center my-4">Real-time Temperature and Humidity Monitoring</h2>
+        <div class="text-center mt-4">
+            <button id="initializeBtn" class="btn btn-primary">Initialize</button>
+            <button id="buttonStart" class="btn btn-success" type="submit" value="start">Start</button>
+            <button id="temperatureBtn" class="btn btn-info active" type="button">Temperature</button>
+            <button id="humidityBtn" class="btn btn-info" type="button">Humidity</button>
+
+            <div id="discBtn" class="disc-btn">
+                <form id="disconnect" method="POST" action="#">
+                    <input type="submit" value="Disconnect" class="btn btn-danger">
+                </form>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-3">
+                <div id="log" class="border rounded p-3"></div>
+            </div>
+            <div class="col-lg-6">
+                <div id="plotdiv" class="border rounded"></div>
+            </div>
+            <div class="col-lg-3">
+                <div class="gauge-container">
+                    <canvas id="canvasID"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

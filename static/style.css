@@ -1,38 +1,45 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700;900&display=swap");
 
-h1 {
-    font-size: 3rem;
-    color: #009fb1;
-    margin-bottom: 40px;
-    margin-top: 80px;
-    text-align: center;
-    position: relative;
-    z-index: 1;
-    font-weight: 900;
-    color: #009fb1;
-}
-
-h1:before {
-    content: "Záverečné zadanie";
-    position: absolute;
-    left: 50%;
-    top: 5px;
-    transform: translate(-50%, -50%);
-    font-size: 3rem;
-    color: #b4c9d4;
-    z-index: -1;
+.gauge-container {
+    display: flex;
+    justify-content: space-between;
     width: 100%;
-    letter-spacing: 0.2rem;
-    white-space: nowrap;
 }
-
-table {
+#plotdiv {
     width: 100%;
-    border-collapse: collapse;
+    height: 300px;
+}
+canvas {
+    width: 100%;
 }
 
-th, td {
-    border: 1px solid black;
-    padding: 8px;
-    text-align: left;
+
+#log {
+    height: 300px; 
+    overflow-y: auto;
+}
+
+#discBtn{
+    visibility: hidden;
+}
+  
+#buttonStart{
+  display: none;
+}
+
+#humidityBtn{
+  display: none;
+}
+#temperatureBtn{
+  display: none;
+}
+
+#canvasID{
+  visibility: hidden;
+}
+
+.disc-btn{
+    margin-right: 25px;
+    margin-bottom: 20px;
+    margin-top: 10px;
 }
