@@ -10,9 +10,13 @@
     <h2 class="text-center my-4">Archived Data</h2>
     <div class="list-group">
       {% for data_id in data_ids %}
-        <a href="javascript:void(0)" class="list-group-item list-group-item-action" data-id="{{ data_id }}">
-          Data ID: {{ data_id }}
-        </a>
+        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+          <span>Data ID: {{ data_id }}</span>
+          <div>
+            <a href="javascript:void(0)" class="btn btn-primary btn-sm view-data" data-id="{{ data_id }}">View</a>
+            <a href="javascript:void(0)" class="btn btn-danger btn-sm delete-data" data-id="{{ data_id }}">Delete</a>
+          </div>
+        </div>
       {% endfor %}
     </div>
     <div id="data-container" class="mt-4">
@@ -31,7 +35,7 @@
           var data = response.data;
           var list = $('<ul class="list-group"></ul>');
           data.forEach(function(item) {
-            list.append('<li class="list-group-item">x: ' + item.x + ', sensor_data: ' + item.sensor_data + '</li>');
+            list.append('<li class="list-group-item">x: ' + item.x + ', sensor_data: ' + item.sensor_data + ', data_switch: ' + item.data_switch + '</li>');
           });
           dataContainer.append(list);
         }
@@ -40,10 +44,27 @@
       });
     }
 
+    function deleteData(dataId) {
+      $.post('/delete_data/' + dataId, function(response) {
+        if (response.status === 'success') {
+          location.reload();
+        } else {
+          alert(response.error);
+        }
+      }).fail(function() {
+        alert("Failed to delete data.");
+      });
+    }
+
     $(document).ready(function() {
-      $('.list-group-item').click(function() {
+      $('.view-data').click(function() {
         var dataId = $(this).data('id');
         loadData(dataId);
+      });
+
+      $('.delete-data').click(function() {
+        var dataId = $(this).data('id');
+        deleteData(dataId);
       });
     });
   </script>

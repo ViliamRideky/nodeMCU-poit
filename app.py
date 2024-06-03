@@ -99,6 +99,18 @@ def list_data():
     data_ids = list(range(len(all_data)))
     return render_template('list_data.html', data_ids=data_ids)
 
+@app.route('/delete_data/<int:data_id>', methods=['POST'])
+def delete_data(data_id):
+    with open(data_file, 'r') as infile:
+        all_data = json.load(infile)
+    if data_id < len(all_data):
+        del all_data[data_id]
+        with open(data_file, 'w') as outfile:
+            json.dump(all_data, outfile)
+        return jsonify({'status': 'success'})
+    else:
+        return jsonify({'error': 'Invalid ID'}), 404
+
 @app.route('/')
 def index():
     return render_template('index.html', async_mode=socketio.async_mode)
