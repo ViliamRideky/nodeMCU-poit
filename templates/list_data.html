@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Archived Data</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h2 class="text-center my-4">Archived Data</h2>
+    <div class="list-group">
+      {% for data_id in data_ids %}
+        <a href="javascript:void(0)" class="list-group-item list-group-item-action" data-id="{{ data_id }}">
+          Data ID: {{ data_id }}
+        </a>
+      {% endfor %}
+    </div>
+    <div id="data-container" class="mt-4">
+      <!-- Data will be loaded here -->
+    </div>
+  </div>
+
+  <script>
+    function loadData(dataId) {
+      $.get('/get_data/' + dataId, function(response) {
+        var dataContainer = $('#data-container');
+        dataContainer.empty();
+        if (response.error) {
+          dataContainer.append('<p class="text-danger">' + response.error + '</p>');
+        } else {
+          var data = response.data;
+          var list = $('<ul class="list-group"></ul>');
+          data.forEach(function(item) {
+            list.append('<li class="list-group-item">x: ' + item.x + ', sensor_data: ' + item.sensor_data + '</li>');
+          });
+          dataContainer.append(list);
+        }
+      }).fail(function() {
+        alert("Failed to load data.");
+      });
+    }
+
+    $(document).ready(function() {
+      $('.list-group-item').click(function() {
+        var dataId = $(this).data('id');
+        loadData(dataId);
+      });
+    });
+  </script>
+</body>
+</html>

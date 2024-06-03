@@ -19,7 +19,7 @@ canvas {
     overflow-y: auto;
 }
 
-#discBtn{
+#closeBtn{
     visibility: hidden;
 }
   

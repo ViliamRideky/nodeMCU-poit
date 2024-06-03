@@ -1,17 +1,17 @@
 <!DOCTYPE HTML>
 <html>
- <head>
+<head>
   <title>NodeMCU-IoT</title>
-   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-   <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js"></script>
-   <script src="static/libs/plotly-latest.min.js"></script>
-   <script src="static/libs/gauge.min.js"></script>
-   <link rel="stylesheet" href="../static/style.css">
-   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-   <script type="text/javascript" charset="utf-8">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js"></script>
+  <script src="static/libs/plotly-latest.min.js"></script>
+  <script src="static/libs/gauge.min.js"></script>
+  <link rel="stylesheet" href="../static/style.css">
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script type="text/javascript" charset="utf-8">
 
-     $(document).ready(function() {
+    $(document).ready(function() {
        
        var temperatureGaugeConfig = {
         units: "°C",
@@ -111,8 +111,7 @@
             Plotly.purge($('#plotdiv')[0]);
             x.length = 0;
             y.length = 0;
-          }
-          else {
+          } else {
             $(this).val("start");
             $(this).text("Start");
             can_change_sensor = 1;
@@ -136,7 +135,45 @@
               updateGaugeConfig(humidityGaugeConfig);
             }
         });
-    
+
+        $('#showArchiveBtn').click(function(event) {
+          var dataId = prompt("Enter data ID:");
+          if (dataId !== null) {
+            $.get('/get_data/' + dataId, function(response) {
+              var archivedData = response.data;
+              var x = archivedData.map(d => d.x);
+              var y = archivedData.map(d => d.sensor_data);
+
+              var trace = {
+                  x: x,
+                  y: y,
+              };       
+              var layout = {
+                xaxis: {
+                    title: 'x',
+                },
+                yaxis: {
+                    title: 'y',
+                }
+              };
+              var traces = [trace];
+              Plotly.newPlot($('#plotdiv')[0], traces, layout); 
+
+              // Update gauge with last data point
+              if (archivedData.length > 0) {
+                gauge.value = archivedData[archivedData.length - 1].sensor_data;
+              }
+
+              // Log data
+              $('#log').empty();
+              archivedData.forEach(function(d) {
+                $('#log').append('x: ' + d.x + ', sensor_data: ' + d.sensor_data + '<br>').html();
+              });
+            }).fail(function() {
+              alert("Invalid ID");
+            });
+          }
+        });
     
       $('form#disconnect').submit(function(event) {
           socket.emit('disconnect_request');
@@ -144,7 +181,7 @@
           return false; });  
           
           
-      $('#initializeBtn').click(function(event) {
+      $('#openBtn').click(function(event) {
         socket.emit('initialize');
           
         initialize();
@@ -153,9 +190,9 @@
         });
         
         function initialize() {
-          $('#initializeBtn').hide();
+          $('#openBtn').hide();
           $('#temperatureBtn, #humidityBtn, #buttonStart').show(); 
-          $('#discBtn').css('visibility', 'visible');
+          $('#closeBtn').css('visibility', 'visible');
         }
         
         
@@ -172,14 +209,16 @@
     <div class="container">
         <h2 class="text-center my-4">Real-time Temperature and Humidity Monitoring</h2>
         <div class="text-center mt-4">
-            <button id="initializeBtn" class="btn btn-primary">Initialize</button>
+            <button id="openBtn" class="btn btn-primary">Open</button>
             <button id="buttonStart" class="btn btn-success" type="submit" value="start">Start</button>
             <button id="temperatureBtn" class="btn btn-info active" type="button">Temperature</button>
             <button id="humidityBtn" class="btn btn-info" type="button">Humidity</button>
+            <button id="showArchiveBtn" class="btn btn-secondary" type="button">Zobraziť dáta</button>
+            <a href="/list_data" target="_blank" class="btn btn-warning">Archív dát</a>
 
-            <div id="discBtn" class="disc-btn">
+            <div id="closeBtn" class="disc-btn">
                 <form id="disconnect" method="POST" action="#">
-                    <input type="submit" value="Disconnect" class="btn btn-danger">
+                    <input type="submit" value="Close" class="btn btn-danger">
                 </form>
             </div>
         </div>
